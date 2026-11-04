@@ -1,0 +1,5 @@
+# GPU (Fortran): install torch for your CUDA from https://pytorch.org first, then: pip install -r requirements.txt
+# CPU (CI / quick run): pip install torch --index-url https://download.pytorch.org/whl/cpu
+torch>=2.6
+transformers==5.22.1
+numpy>=1.26
