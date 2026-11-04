@@ -1,28 +1,33 @@
 # tiny-inference-lab
 
-Small, runnable reproductions of recent research on **efficient, on-device AI**: KV-cache compression, quantization, low-memory inference, and local agents that never touch the cloud.
+Small, runnable reproductions of recent research on **efficient, on-device AI**: KV-cache compression, quantization, and low-memory inference. Every experiment runs in minutes on a laptop CPU and ends in a pre-registered PASS / FAIL / INCONCLUSIVE verdict.
 
-Each experiment is:
+## Results
 
-- **one paper, one or more falsifiable claims**, with a verdict (reproduced, partially, or not)
-- **runnable in minutes on a laptop CPU** (NumPy first, heavier deps only when the claim needs a real model)
-- **honest about what the abstract leaves out**: every README has a "what I found" section
+| # | Goal | Verdict | Details |
+|---|---|---|---|
+| 01 | Compress the KV cache to ~3 bits with no calibration ([TurboQuant](https://arxiv.org/abs/2504.19874), ICLR 2026) | **INCONCLUSIVE** (4/5) ✨ | [README](experiments/01-turboquant-kv-cache) |
+| 02 | Give each token its own KV bit budget ([Don't Waste Bits](https://arxiv.org/abs/2604.04722), 2026) | *in progress* | |
 
-| # | Experiment | Paper | Headline result | Runtime |
-|---|---|---|---|---|
-| 01 | [TurboQuant KV-cache compression](experiments/01-turboquant-kv-cache) | [arXiv:2504.19874](https://arxiv.org/abs/2504.19874) (ICLR 2026) | Distortion bounds reproduced exactly. At ~2 bits, KL to fp16 attention is 25× lower than per-token int quantization. The "unbiased" variant is *worse* for softmax attention | ~15 s |
-| 02 | Adaptive per-token KV bit allocation | [arXiv:2604.04722](https://arxiv.org/abs/2604.04722) | _next_ | |
+✨ **01:** every claim from the paper reproduced. TurboQuant beat int quantization on 5 of 6 KV caches, and a bad random rotation can cancel the win on the sixth.
 
-## Quick start
+## How each experiment is judged
+
+- **Pass criteria are written down before the full run** in `criteria.py`, with thresholds from the paper or a baseline.
+- **Each experiment has a negative control,** a broken variant that should FAIL. If it passes, the verdict is INCONCLUSIVE.
+- **Perturbations:** a criterion must hold across seeds, sizes, and data draws, not just one lucky run.
+- **Verdicts:** PASS = all criteria pass. FAIL = the core criterion fails. INCONCLUSIVE = mixed results. ✨ INTRIGUING marks a surprise worth a follow-up.
+
+## Run
 
 ```bash
 git clone https://github.com/03wulum/tiny-inference-lab && cd tiny-inference-lab
 pip install -r requirements.txt
-cd experiments/01-turboquant-kv-cache && python run.py
+python run_all.py --quick   # smoke-run everything in seconds
+python run_all.py           # full runs → verdict table
+python run_all.py --clean   # remove caches and downloaded data
 ```
 
-CI runs every experiment's tests and a `--quick` smoke run on each push.
+Each experiment folder has a short README (verdict + PASS/FAIL table), an `EXPLAINER.md` in plain language, and `docs/DETAILS.md` with method, controls, and limitations. CI runs the tests and a quick run of every experiment on each push.
 
-## License
-
-MIT
+MIT licensed.
