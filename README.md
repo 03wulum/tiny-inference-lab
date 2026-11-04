@@ -16,6 +16,7 @@ Small, runnable reproductions of recent research on **efficient, on-device AI**:
 - **Pass criteria are written down before the full run** in `criteria.py`, with thresholds from the paper or a baseline.
 - **Each experiment has a negative control,** a broken variant that should FAIL. If it passes, the verdict is INCONCLUSIVE.
 - **Perturbations:** a criterion must hold across seeds, sizes, and data draws, not just one lucky run.
+- **Standards:** every experiment follows the [Experiment SOP](docs/SOP.md).
 - **Verdicts:** PASS = all criteria pass. FAIL = the core criterion fails. INCONCLUSIVE = mixed results. ✨ INTRIGUING marks a surprise worth a follow-up.
 
 ## Run
