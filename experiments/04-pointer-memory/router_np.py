@@ -13,9 +13,8 @@ N_HOPS = 3
 
 
 def _ln(x, w, b, eps=1e-5):
-    m = x.mean(-1, keepdims=True)
-    v = ((x - m) ** 2).mean(-1, keepdims=True)
-    return (x - m) / np.sqrt(v + eps) * w + b
+    xc = x - x.mean(-1, keepdims=True)
+    return xc * (w / np.sqrt((xc * xc).mean(-1, keepdims=True) + eps)) + b
 
 
 def _softmax(x):
@@ -25,7 +24,11 @@ def _softmax(x):
 
 
 def _lin(W, p, x):
-    return x @ W[p + ".weight"].T + W[p + ".bias"]
+    wt = W.get(p + ".wT")
+    if wt is None:                                  # cache a contiguous transpose: ~2x faster matmul
+        wt = W[p + ".wT"] = np.ascontiguousarray(W[p + ".weight"].T)
+    y = x.reshape(-1, x.shape[-1]) @ wt + W[p + ".bias"]      # 2-D matmul hits BLAS directly
+    return y.reshape(*x.shape[:-1], wt.shape[1])
 
 
 class NpEncoder:
@@ -37,6 +40,9 @@ class NpEncoder:
 
     def __call__(self, ids, x=None):
         W, p = self.W, self.p
+        n = int((ids != 0).sum(1).max())                  # drop all-padding columns: same output, less work
+        ids = ids[:, :n]
+        x = None if x is None else x[:, :n]
         pad = ids == 0
         if x is None:
             x = W[f"{p}.tok.weight"][ids]
@@ -66,24 +72,34 @@ class NpRouter:
     def __init__(self, W):
         self.W = W
         self.enc = NpEncoder(W)
-        self.d = W["hop_emb"].shape[1]
+        d = self.d = W["hop_emb"].shape[1]
+        # Split the hop-query and relation layers into blocks once, so each hop is a few small
+        # matmuls with no concatenation (algebraically identical to model_torch.Router).
+        Wq, Wr = W["q.weight"], W["rel.weight"]
+        self.q_cls = np.ascontiguousarray(Wq[:, :d].T)
+        self.q_hop = W["hop_emb"] @ Wq[:, d:2 * d].T + W["q.bias"]           # [3, d] constant per hop
+        self.q_prev = W["rel_emb"] @ Wq[:, 2 * d:].T                         # [n_dir, d]: p @ this
+        self.r_c = np.ascontiguousarray(Wr[:, :d].T)
+        self.r_q = np.ascontiguousarray(Wr[:, d:].T)
+        self.n_w = np.ascontiguousarray(W["n_hops.weight"].T)
 
     def probs(self, ids):
         """ids [B, L] -> rel_p [B, 3, n_dir], hop_p [B, 3]"""
         W = self.W
         h, pad = self.enc(ids)
         cls = h[:, 0]
-        prev = np.zeros_like(cls)
-        rels = []
+        base = cls @ self.q_cls
+        neg = np.where(pad, -1e9, 0.0).astype(np.float32)
+        scale = 1.0 / np.sqrt(self.d)
+        rels, prev = [], 0.0
         for t in range(N_HOPS):
-            q = np.tanh(_lin(W, "q", np.concatenate([cls, np.broadcast_to(W["hop_emb"][t], cls.shape), prev], -1)))
-            a = np.einsum("bld,bd->bl", h, q) / np.sqrt(self.d)
-            a = _softmax(np.where(pad, -1e9, a))
-            c = np.einsum("bl,bld->bd", a, h)
-            p = _softmax(_lin(W, "rel", np.concatenate([c, q], -1)))
+            q = np.tanh(base + self.q_hop[t] + prev)
+            a = _softmax((h @ q[:, :, None])[:, :, 0] * scale + neg)
+            c = (a[:, None, :] @ h)[:, 0]
+            p = _softmax(c @ self.r_c + q @ self.r_q + W["rel.bias"])
             rels.append(p)
-            prev = p @ W["rel_emb"]
-        return np.stack(rels, 1), _softmax(_lin(W, "n_hops", cls))
+            prev = p @ self.q_prev
+        return np.stack(rels, 1), _softmax(cls @ self.n_w + W["n_hops.bias"])
 
     def paths(self, ids):
         """Hard decisions: list of pointer-type sequences, one per question."""

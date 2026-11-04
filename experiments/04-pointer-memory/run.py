@@ -166,13 +166,16 @@ def clean():
 
 
 def main():
+    global W
     ap = argparse.ArgumentParser()
     ap.add_argument("--quick", action="store_true")
     ap.add_argument("--clean", action="store_true")
+    ap.add_argument("--weights", default=str(W), help="weights folder (default weights/)")
     a = ap.parse_args()
     if a.clean:
         return clean()
-    out = HERE / "results" / ("quick" if a.quick else "")
+    W = Path(a.weights).resolve()
+    out = HERE / "results" / ("quick" if a.quick or W != HERE / "weights" else "")
     out.mkdir(parents=True, exist_ok=True)
     logf = W / "train_log.json"
     if not logf.exists():
@@ -184,7 +187,7 @@ def main():
     vocab = D.Vocab(log["vocab"])
 
     t0 = time.time()
-    root = D.download()
+    root = D.download([f for f in D.FILES if "train" not in f and "dev" not in f])   # kb + test sets, ~11 MB
     kb = D.KB.load(root / "kb/kb.txt")
     store = PointerStore.from_kb(kb)
     n = 200 if a.quick else None

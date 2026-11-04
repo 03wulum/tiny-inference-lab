@@ -96,7 +96,7 @@ def train_one(name, kind, model, batches, store_t, n_ent, seconds, dev, smoke):
             opt.step()
             step += 1
             seen += len(idx)
-            losses.append(float(loss))
+            losses.append(loss.item())
             if smoke and step >= 3:
                 break
             if time.time() - t0 > seconds:
