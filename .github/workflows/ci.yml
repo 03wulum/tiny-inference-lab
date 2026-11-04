@@ -12,6 +12,6 @@ jobs:
       - name: Tests
         run: |
           for d in experiments/*/; do (cd "$d" && python -m pytest -q); done
-      - name: Smoke-run every experiment
+      - name: Smoke-run every experiment (quick)
         run: |
-          for d in experiments/*/; do (cd "$d" && python run.py --quick > /dev/null); done
+          python run_all.py --quick

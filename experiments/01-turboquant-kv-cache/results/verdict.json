@@ -1,0 +1,85 @@
+{
+  "experiment": "01-turboquant-kv-cache",
+  "paper": "arXiv:2504.19874",
+  "quick": false,
+  "runtime_s": 47.4,
+  "verdict": "INCONCLUSIVE",
+  "passed": 4,
+  "total": 5,
+  "criteria": [
+    {
+      "id": "C1",
+      "core": true,
+      "name": "MSE within the paper's proven bounds (1-4 bits)",
+      "metric": "c1_worst_ratio_to_upper",
+      "op": "<=",
+      "threshold": 1.0,
+      "source": "Thm 1: MSE <= (sqrt3*pi/2)*4^-b; worst case over bits, dims, seeds",
+      "value": 0.8915467989128868,
+      "result": "PASS"
+    },
+    {
+      "id": "C2",
+      "name": "MSE matches the paper's reported values",
+      "metric": "c2_worst_rel_err",
+      "op": "<=",
+      "threshold": 0.15,
+      "source": "Paper reports 0.36/0.117/0.03/0.009 (rounded); allow +-15%",
+      "value": 0.1324624239055344,
+      "result": "PASS"
+    },
+    {
+      "id": "C3",
+      "name": "TurboQuant-prod inner products are unbiased",
+      "metric": "c3_worst_slope_err",
+      "op": "<=",
+      "threshold": 0.02,
+      "source": "Thm 2: E[<y, x_hat>] = <y, x>; |slope-1| over bits 1-4",
+      "value": 0.0024428489260392983,
+      "result": "PASS"
+    },
+    {
+      "id": "C4",
+      "name": "1-bit MSE quantizer shrinks inner products by 2/pi",
+      "metric": "c4_shrink_err",
+      "op": "<=",
+      "threshold": 0.02,
+      "source": "Paper sec. 3.2: bias factor 2/pi = 0.637 at b=1",
+      "value": 0.0025778510509856245,
+      "result": "PASS"
+    },
+    {
+      "id": "C5",
+      "name": "3-bit KV cache: attention error at most half of per-token int quantization",
+      "metric": "c5_worst_kl_ratio",
+      "op": "<=",
+      "threshold": 0.5,
+      "source": "Baseline: per-token min/max (KIVI-style) at equal or more bits/coord; worst case over 3 data draws x 2 context lengths",
+      "value": 1.0494624667414507,
+      "result": "FAIL"
+    }
+  ],
+  "negative_control": {
+    "id": "N1",
+    "name": "No random rotation stays within the MSE bound on outlier-heavy keys",
+    "metric": "n1_ratio_to_upper",
+    "op": "<=",
+    "threshold": 1.0,
+    "expect": "FAIL",
+    "source": "Same codebook without the rotation: the guarantee no longer applies",
+    "value": 7.262334246824564,
+    "result": "FAIL",
+    "as_expected": true
+  },
+  "registered": "retro (2026-11-04), thresholds from paper",
+  "intriguing": "The random rotation is a lottery: on one KV cache the attention error's spread across rotations was 1.1x its mean, so picking the rotation may matter more than the bit width.",
+  "metrics": {
+    "c1_worst_ratio_to_upper": 0.8915467989128868,
+    "c2_worst_rel_err": 0.1324624239055344,
+    "c3_worst_slope_err": 0.0024428489260392983,
+    "c4_shrink_err": 0.0025778510509856245,
+    "c5_worst_kl_ratio": 1.0494624667414507,
+    "n1_ratio_to_upper": 7.262334246824564,
+    "c5_draws_passing": "5/6"
+  }
+}

@@ -85,12 +85,13 @@ class TurboQuantMSE:
     d: int
     bits: int
     seed: int = 0
+    rotate: bool = True  # False = ablation / negative control: skip the random rotation
 
     def __post_init__(self):
         # Separate seed stream so the rotation can never coincide with data drawn from
         # np.random.default_rng(seed) (a correlated rotation silently breaks the guarantees).
         rng = np.random.default_rng((0x7B0, self.seed))
-        self.rot = random_rotation(self.d, rng)
+        self.rot = random_rotation(self.d, rng) if self.rotate else np.eye(self.d)
         self.centroids, self.bounds = lloyd_max_codebook(self.d, self.bits)
 
     def quantize(self, X: np.ndarray):
