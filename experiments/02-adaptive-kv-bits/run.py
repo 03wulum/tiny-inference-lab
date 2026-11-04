@@ -92,14 +92,14 @@ def continuation_logprob(logits, ids, spans):
     return out
 
 
-def evaluate_model(name, n, batch, device, dtype):
+def evaluate_model(name, start, end, batch, device, dtype):
     from transformers import AutoModelForCausalLM, AutoTokenizer
     tok = AutoTokenizer.from_pretrained(MODELS[name])
     model = AutoModelForCausalLM.from_pretrained(MODELS[name], dtype=dtype).to(device).eval()
     kvq.install(model)
     head_dim = model.config.hidden_size // model.config.num_attention_heads
     turbo = kvq.TurboQuantTorch(head_dim, 3, device=device)
-    data = load_hellaswag(n)
+    data = load_hellaswag(end)[start:end]
     correct = {m: [] for m in METHODS}
     correct_norm = {m: [] for m in METHODS}
     bits_used = {m: [] for m in METHODS}
@@ -119,7 +119,7 @@ def evaluate_model(name, n, batch, device, dtype):
                 "static-4": kvq.static_bits(mask, 4),
                 "static-2": kvq.static_bits(mask, 2),
                 f"adaptive-{TARGET_BITS}": kvq.adaptive_bits(feats, mask, TARGET_BITS),
-                f"random-{TARGET_BITS}": kvq.random_bits(mask, TARGET_BITS, seed=s),
+                f"random-{TARGET_BITS}": kvq.random_bits(mask, TARGET_BITS, seed=start + s),
                 "turboquant-3": "turbo",
             }
             for m, plan in plans.items():
@@ -141,8 +141,25 @@ def evaluate_model(name, n, batch, device, dtype):
                 bits_used[m].append(b)
     del model
     secs = time.perf_counter() - t0
-    return dict(correct=correct, correct_norm=correct_norm,
-                bits={m: float(np.mean(v)) for m, v in bits_used.items()}, seconds=secs)
+    return dict(model=name, start=start, end=end, correct=correct, correct_norm=correct_norm,
+                bits=bits_used, seconds=secs)
+
+
+def merge(parts):
+    """Concatenate shard results per model, in question order."""
+    res = {}
+    for p in sorted(parts, key=lambda p: (p["model"], p["start"])):
+        r = res.setdefault(p["model"], dict(correct={m: [] for m in METHODS},
+                                            correct_norm={m: [] for m in METHODS},
+                                            bits={m: [] for m in METHODS}, seconds=0.0, n=0))
+        for k in ("correct", "correct_norm", "bits"):
+            for m in METHODS:
+                r[k][m] += p[k][m]
+        r["seconds"] += p["seconds"]
+        r["n"] += p["end"] - p["start"]
+    for r in res.values():
+        r["bits"] = {m: float(np.mean(v)) for m, v in r["bits"].items()}
+    return res
 
 
 # ---- statistics -----------------------------------------------------------------------
@@ -166,6 +183,10 @@ def main():
     ap.add_argument("--clean", action="store_true")
     ap.add_argument("--n", type=int, default=None)
     ap.add_argument("--batch", type=int, default=16)
+    ap.add_argument("--models", default=None, help="comma-separated subset of " + ",".join(MODELS))
+    ap.add_argument("--start", type=int, default=0, help="first question (for sharding)")
+    ap.add_argument("--raw-only", action="store_true", help="evaluate a shard, save raw results, no verdict")
+    ap.add_argument("--aggregate", default=None, help="dir of raw shard JSONs -> verdict (no model needed)")
     a = ap.parse_args()
     if a.clean:
         shutil.rmtree(DATA, ignore_errors=True)
@@ -173,13 +194,29 @@ def main():
         return
     device = "cuda" if torch.cuda.is_available() else "cpu"
     dtype = torch.float16 if device == "cuda" else torch.float32
-    n = a.n or (40 if a.quick else 2000)
-    models = ["SmolLM-135M"] if a.quick else list(MODELS)
     out = HERE / "results" / ("quick" if a.quick else "")
     out.mkdir(parents=True, exist_ok=True)
-
     t0 = time.perf_counter()
-    res = {m: evaluate_model(m, n, a.batch if device == "cuda" else 4, device, dtype) for m in models}
+
+    if a.aggregate:
+        parts = [json.loads(f.read_text()) for f in sorted(Path(a.aggregate).glob("*.json"))]
+        device = parts[0].get("device", device)
+    else:
+        n = a.n or (40 if a.quick else 2000)
+        models = ["SmolLM-135M"] if a.quick else (a.models.split(",") if a.models else list(MODELS))
+        parts = []
+        for m in models:
+            p = evaluate_model(m, a.start, a.start + n, a.batch if device == "cuda" else 4, device, dtype)
+            p["device"] = device
+            raw = out / "raw"
+            raw.mkdir(exist_ok=True)
+            (raw / f"{m}_{a.start:05d}.json").write_text(json.dumps(p))
+            parts.append(p)
+        if a.raw_only:
+            print(f"saved {len(parts)} raw shard(s) to {out / 'raw'} in {time.perf_counter() - t0:.0f}s")
+            return
+    res = merge(parts)
+    n = min(r["n"] for r in res.values())
 
     rows, per_model = [], {}
     for m, r in res.items():
@@ -204,7 +241,7 @@ def main():
         n1_static2_gap=max(abs(p["static-2"]["diff"]) for p in per_model.values()),
     )
     v = evaluate(metrics)
-    runtime = time.perf_counter() - t0
+    runtime = sum(r["seconds"] for r in res.values()) if a.aggregate else time.perf_counter() - t0
 
     print(f"\nExperiment 02 · Don't Waste Bits  ({'quick' if a.quick else 'full'}, n={n}, {device}, {runtime:.0f}s)\n")
     print(md_table(rows, ["model", "method", "avg_bits", "acc", "acc_norm", "vs_FP16"]))
@@ -216,7 +253,8 @@ def main():
 
     (out / "verdict.json").write_text(json.dumps(
         {"experiment": "02-adaptive-kv-bits", "paper": "arXiv:2604.04722", "quick": a.quick, "n": n,
-         "device": device, "runtime_s": round(runtime, 1), **v, "metrics": metrics,
+         "device": device, "runtime_s": round(runtime, 1),
+         "compute_s": {m: round(r["seconds"], 1) for m, r in res.items()}, **v, "metrics": metrics,
          "adaptive_vs_static4": {m: p["gain"] for m, p in per_model.items()}}, indent=2, default=float))
     md = (f"# Experiment 02 · full results\n\n_{'quick' if a.quick else 'full'} run, n={n} HellaSwag "
           f"validation questions per model, {device}, {runtime:.0f}s. Verdict **{v['verdict']}** "

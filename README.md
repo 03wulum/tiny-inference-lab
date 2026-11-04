@@ -7,7 +7,7 @@ Small, runnable reproductions of recent research on **efficient, on-device AI**:
 | # | Goal | Verdict | Details |
 |---|---|---|---|
 | 01 | Compress the KV cache to ~3 bits with no calibration ([TurboQuant](https://arxiv.org/abs/2504.19874), ICLR 2026) | **INCONCLUSIVE** (4/5) ✨ | [README](experiments/01-turboquant-kv-cache) |
-| 02 | Check whether per-token KV precision beats plain 4-bit ([Don't Waste Bits](https://arxiv.org/abs/2604.04722), 2026) | *pending: criteria pre-registered, GPU run queued* | [README](experiments/02-adaptive-kv-bits) |
+| 02 | Check whether per-token KV precision beats plain 4-bit ([Don't Waste Bits](https://arxiv.org/abs/2604.04722), 2026) | *pending: criteria pre-registered, full run on CI* | [README](experiments/02-adaptive-kv-bits) |
 | 03 | Fix 01's unlucky rotations by picking the best of 8 on 64 calibration queries | **PASS** (3/3) | [README](experiments/03-best-of-k-rotations) |
 
 ✨ **01:** every claim from the paper reproduced. TurboQuant beat int quantization on 5 of 6 KV caches, and a bad random rotation can cancel the win on the sixth. **03** fixes this: best-of-8 selection passes on all 6 caches for 0.24 s of work.

@@ -27,3 +27,7 @@ For SmolLM-360M on HellaSwag: FP16 41.50%, static 4-bit KV 33.60%, adaptive 41.2
 ## Results
 
 Pending the full run.
+
+## Where it runs
+
+The full run uses GitHub's free CPU runners via the manual `full-run` workflow: 2 models × 8 shards of 250 questions each, merged by `run.py --aggregate`. On CPU the "FP16" baseline actually runs in fp32, which is a slightly stronger reference than fp16, and the quantized variants are computed from the same fp32 tensors. The random-policy ablation's seeds depend on the shard layout.

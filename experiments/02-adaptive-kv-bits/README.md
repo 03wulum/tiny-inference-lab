@@ -2,7 +2,7 @@
 
 **Goal:** check the claim in [Don't Waste Bits!](https://arxiv.org/abs/2604.04722) (2026) that static 4-bit KV quantization costs SmolLM-360M ~8 HellaSwag points, and that choosing each token's precision (2/4/8/16 bits) wins them back.
 
-**Verdict: pending.** Criteria were committed before the first full run. The full run needs a GPU and is queued on Fortran.
+**Verdict: pending.** Criteria were committed before the first full run. The full run is going on GitHub's free CPU runners (the `full-run` workflow, 16 parallel shards), so anyone can rerun it.
 
 [Details](docs/DETAILS.md) · [Criteria](criteria.py)
 
@@ -21,7 +21,9 @@
 
 ```bash
 pip install -r requirements.txt   # see the file for the torch/CUDA line
-python run.py            # both models, 2,000 questions; ~10 min on a GPU
+python run.py            # both models, 2,000 questions; ~10 min on a GPU, hours on one CPU
+python run.py --models SmolLM-135M --start 0 --n 250 --raw-only   # one shard (see .github/workflows/full-run.yml)
+python run.py --aggregate results/raw                              # shards -> verdict
 python run.py --quick    # SmolLM-135M, 40 questions; ~1-2 min on a CPU
 python -m pytest -q      # 6 checks on a tiny random model, no downloads
 python run.py --clean    # delete downloaded data
