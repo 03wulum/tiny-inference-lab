@@ -1,0 +1,71 @@
+name: full-run
+# Manual full run of experiment 02 on GitHub's free CPU runners (no local GPU needed).
+# Actions tab -> full-run -> Run workflow. Results arrive as the "exp02-results" artifact.
+on:
+  workflow_dispatch:
+    inputs:
+      questions:
+        description: "HellaSwag questions per model"
+        default: "2000"
+      shards:
+        description: "parallel shards per model (questions must divide evenly)"
+        default: "8"
+permissions:
+  contents: read
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      shards: ${{ steps.p.outputs.shards }}
+    steps:
+      - id: p
+        run: echo "shards=$(python3 -c "print(list(range(${{ inputs.shards }})))")" >> "$GITHUB_OUTPUT"
+  shard:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    strategy:
+      fail-fast: false
+      matrix:
+        model: [SmolLM-135M, SmolLM-360M]
+        shard: ${{ fromJSON(needs.plan.outputs.shards) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r experiments/02-adaptive-kv-bits/requirements.txt
+      - name: Evaluate shard
+        working-directory: experiments/02-adaptive-kv-bits
+        run: |
+          PER=$(( ${{ inputs.questions }} / ${{ inputs.shards }} ))
+          python run.py --models ${{ matrix.model }} --start $(( ${{ matrix.shard }} * PER )) --n $PER --raw-only
+      - uses: actions/upload-artifact@v4
+        with:
+          name: raw-${{ matrix.model }}-${{ matrix.shard }}
+          path: experiments/02-adaptive-kv-bits/results/raw/*.json
+  aggregate:
+    needs: shard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: |
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r experiments/02-adaptive-kv-bits/requirements.txt
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: raw-*
+          path: experiments/02-adaptive-kv-bits/results/raw
+          merge-multiple: true
+      - name: Verdict
+        working-directory: experiments/02-adaptive-kv-bits
+        run: python run.py --aggregate results/raw | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exp02-results
+          path: experiments/02-adaptive-kv-bits/results/
