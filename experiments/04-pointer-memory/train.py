@@ -127,7 +127,12 @@ def main():
         free, total = torch.cuda.mem_get_info()
         print(f"GPU {torch.cuda.get_device_name()} free {free / 2**30:.1f} / {total / 2**30:.1f} GiB")
 
-    root = D.download() if not a.smoke else D.DATA
+    try:
+        root = D.download()
+    except OSError:
+        if not a.smoke:
+            raise
+        root = D.DATA        # smoke check only needs kb + dev files
     kb = D.KB.load(root / "kb/kb.txt")
     store = PointerStore.from_kb(kb)
     split = "dev" if a.smoke else "train"     # the smoke check also runs where only dev files exist
