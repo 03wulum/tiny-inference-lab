@@ -3,3 +3,4 @@
 torch>=2.6
 transformers==5.22.1
 numpy>=1.26
+pyarrow>=15

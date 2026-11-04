@@ -52,7 +52,7 @@ class TurboQuantTorch:
     def __init__(self, d: int, bits: int, seed: int = 0, device="cpu"):
         import sys
         from pathlib import Path
-        sys.path.insert(0, str(Path(__file__).parent.parent / "01-turboquant-kv-cache"))
+        sys.path.append(str(Path(__file__).parent.parent / "01-turboquant-kv-cache"))
         from turboquant import lloyd_max_codebook, random_rotation  # noqa: E402
         rng = np.random.default_rng((0x7B0, seed))
         self.rot = torch.tensor(random_rotation(d, rng), dtype=torch.float32, device=device)

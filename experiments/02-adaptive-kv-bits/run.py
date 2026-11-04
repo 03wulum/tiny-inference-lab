@@ -6,7 +6,7 @@ per-token adaptive precision win them back? (arXiv:2604.04722)
   python run.py --quick         # SmolLM-135M, 40 questions; ~1 min on a CPU (CI smoke run)
   python run.py --clean         # delete downloaded data (models live in the HF cache)
 
-Downloads: HellaSwag validation (MIT, ~11 MB, into data/) and SmolLM-135M/360M
+Downloads: HellaSwag validation (MIT, ~11 MB parquet from the HF Hub, into data/) and SmolLM-135M/360M
 (Apache-2.0, ~1 GB total, HF cache). Nothing is trained.
 """
 from __future__ import annotations
@@ -16,7 +16,6 @@ import json
 import re
 import shutil
 import time
-import urllib.request
 from pathlib import Path
 
 import numpy as np
@@ -27,7 +26,7 @@ from criteria import evaluate
 
 HERE = Path(__file__).parent
 DATA = HERE / "data"
-HELLASWAG_URL = "https://raw.githubusercontent.com/rowanz/hellaswag/master/data/hellaswag_val.jsonl"
+HELLASWAG_REPO = "Rowan/hellaswag"  # MIT; the parquet conversion on the HF Hub (the GitHub raw files are gone)
 MODELS = {"SmolLM-360M": "HuggingFaceTB/SmolLM-360M", "SmolLM-135M": "HuggingFaceTB/SmolLM-135M"}
 TARGET_BITS = 3.8
 METHODS = ["FP16", "static-8", "static-4", "static-2", f"adaptive-{TARGET_BITS}",
@@ -45,7 +44,16 @@ def load_hellaswag(n):
     DATA.mkdir(exist_ok=True)
     f = DATA / "hellaswag_val.jsonl"
     if not f.exists():
-        urllib.request.urlretrieve(HELLASWAG_URL, f)
+        from huggingface_hub import HfApi, hf_hub_download
+        import pyarrow.parquet as pq
+        rev = "refs/convert/parquet"
+        files = sorted(x for x in HfApi().list_repo_files(HELLASWAG_REPO, repo_type="dataset", revision=rev)
+                       if "validation" in x and x.endswith(".parquet"))
+        rows = []
+        for name in files:
+            path = hf_hub_download(HELLASWAG_REPO, name, repo_type="dataset", revision=rev, cache_dir=DATA / "hf")
+            rows += pq.read_table(path).to_pylist()
+        f.write_text("".join(json.dumps(r) + "\n" for r in rows))
     out = []
     for line in f.read_text().splitlines()[:n]:
         d = json.loads(line)

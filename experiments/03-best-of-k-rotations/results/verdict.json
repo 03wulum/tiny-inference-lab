@@ -1,0 +1,61 @@
+{
+  "experiment": "03-best-of-k-rotations",
+  "follows": "01-turboquant-kv-cache",
+  "quick": false,
+  "runtime_s": 7.4,
+  "verdict": "PASS",
+  "passed": 3,
+  "total": 3,
+  "criteria": [
+    {
+      "id": "C1",
+      "core": true,
+      "name": "Best-of-8: attention KL <= 0.5x int quantization on all 6 caches (exp 01's C5)",
+      "metric": "c1_worst_kl_ratio",
+      "op": "<=",
+      "threshold": 0.5,
+      "source": "Experiment 01 C5 threshold; worst over caches and repeats",
+      "value": 0.4559787915065715,
+      "result": "PASS"
+    },
+    {
+      "id": "C2",
+      "name": "Best-of-8 mean KL <= 0.7x a single random rotation's mean KL",
+      "metric": "c2_kl_vs_random",
+      "op": "<=",
+      "threshold": 0.7,
+      "source": "Needs a material gain, not noise; mean over caches and repeats",
+      "value": 0.6088127583729972,
+      "result": "PASS"
+    },
+    {
+      "id": "C3",
+      "name": "Selection costs <= 1 s per cache on one CPU core",
+      "metric": "c3_select_seconds",
+      "op": "<=",
+      "threshold": 1.0,
+      "source": "Must be cheap enough to run once per layer at model load",
+      "value": 0.23877893600001698,
+      "result": "PASS"
+    }
+  ],
+  "negative_control": {
+    "id": "N1",
+    "name": "Worst-of-8 (same signal, inverted) also meets C1's 0.5x on all caches",
+    "metric": "n1_worst_kl_ratio",
+    "op": "<=",
+    "threshold": 0.5,
+    "expect": "FAIL",
+    "source": "If picking the worst candidate still passes, the selection signal carries no information",
+    "value": 3.35348753095852,
+    "result": "FAIL",
+    "as_expected": true
+  },
+  "registered": "pre-registered 2026-11-04, before the first run",
+  "metrics": {
+    "c1_worst_kl_ratio": 0.4559787915065715,
+    "c2_kl_vs_random": 0.6088127583729972,
+    "c3_select_seconds": 0.23877893600001698,
+    "n1_worst_kl_ratio": 3.35348753095852
+  }
+}
