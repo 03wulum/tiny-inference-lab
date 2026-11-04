@@ -8,6 +8,7 @@ Small, runnable reproductions of recent research on **efficient, on-device AI**:
 |---|---|---|---|
 | 01 | Compress the KV cache to ~3 bits with no calibration ([TurboQuant](https://arxiv.org/abs/2504.19874), ICLR 2026) | **INCONCLUSIVE** (4/5) ✨ | [README](experiments/01-turboquant-kv-cache) |
 | 02 | Give each token its own KV bit budget ([Don't Waste Bits](https://arxiv.org/abs/2604.04722), 2026) | *in progress* | |
+| 04 | Answer multi-hop questions with a 0.3M-param router that only stores *how to connect* facts, plus a constant-time pointer store | *pending (GPU run queued)* | [README](experiments/04-pointer-memory) |
 
 ✨ **01:** every claim from the paper reproduced. TurboQuant beat int quantization on 5 of 6 KV caches, and a bad random rotation can cancel the win on the sixth.
 
