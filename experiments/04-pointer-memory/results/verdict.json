@@ -1,0 +1,187 @@
+{
+ "verdict": "INCONCLUSIVE",
+ "passed": 3,
+ "total": 5,
+ "criteria": [
+  {
+   "id": "C1",
+   "core": true,
+   "name": "Beats the same-size no-memory model by >= 20 pts on 2- and 3-hop",
+   "metric": "c1_min_gap_pts",
+   "op": ">=",
+   "threshold": 20.0,
+   "source": "No-memory baseline gets the same bytes as router + store (fp32), sees every fact, same GPU time; worst seed, min over 2-hop and 3-hop",
+   "value": 52.704217458315824,
+   "result": "PASS"
+  },
+  {
+   "id": "C2",
+   "name": "Accuracy at published-system level (>= 95 / 94 / 85 Hits@1)",
+   "metric": "c2_min_margin_pts",
+   "op": ">=",
+   "threshold": 0.0,
+   "source": "GraftNet 97.0/94.8/77.7, ChatGPT+StructGPT 93.9 (2-hop) / 80.2 (3-hop); worst seed",
+   "value": -2.220120498809024,
+   "result": "FAIL"
+  },
+  {
+   "id": "C3",
+   "name": "One question end to end in <= 500 us on a CPU (batch 1)",
+   "metric": "c3_e2e_us",
+   "op": "<=",
+   "threshold": 500.0,
+   "source": "Obi's target: fast enough to feed a main model; median over 1,000 2-hop questions",
+   "value": 548.9999894052744,
+   "result": "FAIL"
+  },
+  {
+   "id": "C4",
+   "name": "Edit 10% of movies' facts: >= 90% of accuracy kept, no retraining",
+   "metric": "c4_edit_ratio",
+   "op": ">=",
+   "threshold": 0.9,
+   "source": "Hits@1 vs the NEW answers after the edit / Hits@1 before the edit, same questions",
+   "value": 1.0,
+   "result": "PASS"
+  },
+  {
+   "id": "C5",
+   "name": "Budget: kept weights + store <= 50 MB, GPU training <= 10 min",
+   "metric": "c5_budget_ok",
+   "op": ">=",
+   "threshold": 1.0,
+   "source": "Project rules (Obi, 2026-11-04): 50 MB kept, ~5 min training, never > 10",
+   "value": 1.0,
+   "result": "PASS"
+  }
+ ],
+ "negative_control": {
+  "id": "N1",
+  "name": "Random pointers (same store shape, shuffled targets) reach 94 on 2-hop",
+  "metric": "n1_random_2hop",
+  "op": ">=",
+  "threshold": 94.0,
+  "expect": "FAIL",
+  "source": "If scrambled pointers still score, the router is not using the memory",
+  "value": 0.39671866594943517,
+  "result": "FAIL",
+  "as_expected": true
+ },
+ "registered": "2026-11-04, before the first training run",
+ "quick": false,
+ "accuracy": {
+  "router_s0": {
+   "1": 95.4851684263449,
+   "2": 99.24690693921463,
+   "3": 82.77987950119098
+  },
+  "router_s1": {
+   "1": 95.37456008044244,
+   "2": 97.62641204948898,
+   "3": 83.82373546307973
+  },
+  "router_s2": {
+   "1": 97.14429361488185,
+   "2": 99.90586336740182,
+   "3": 83.82373546307973
+  },
+  "param_1x": {
+   "1": 6.757164404223228,
+   "2": 10.025551371705218,
+   "3": 30.075662042875155
+  },
+  "param_4x": {
+   "1": 16.17898441427853,
+   "2": 10.792092522861754,
+   "3": 34.30713184811545
+  }
+ },
+ "param_fact_recall": {
+  "param_1x": 7.3999999999999995,
+  "param_4x": 25.866666666666667
+ },
+ "worst_seed": {
+  "1": 95.37456008044244,
+  "2": 97.62641204948898,
+  "3": 82.77987950119098
+ },
+ "controls": {
+  "random_pointers": {
+   "1": 0.1910507792860734,
+   "2": 0.39671866594943517,
+   "3": 0.5394423427210313
+  },
+  "no_memory": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0
+  },
+  "untrained_router": {
+   "1": 0.0,
+   "2": 0.0,
+   "3": 0.0
+  }
+ },
+ "exploratory": {
+  "router_12hop": {
+   "1": 97.14429361488185,
+   "2": 99.92603550295857,
+   "3": 0.02101723413198823
+  },
+  "router_1pct": {
+   "1": 97.14429361488185,
+   "2": 98.41984938138785,
+   "3": 83.44542524870394
+  }
+ },
+ "edit": {
+  "n_candidates": 2305,
+  "n_changed": 568,
+  "movies_edited": 1642,
+  "pointer_before": 99.64788732394366,
+  "pointer_after": 99.64788732394366,
+  "ratio": 1.0,
+  "param_after_new_facts": 6.161971830985916,
+  "param_still_old_facts": 7.746478873239436
+ },
+ "latency": {
+  "deref_python_ns": 219.63699953630567,
+  "deref_vectorised_ns": 6.815900094807148,
+  "e2e_cpu_batch1_us_median": 548.9999894052744,
+  "e2e_cpu_batch1_us_p90": 775.5298633128405,
+  "router_cpu_batched_us_per_q": 266.5962998289615,
+  "param_1x_cpu_batch1_us_median": 3923.2501294463873
+ },
+ "latency_gpu": {
+  "gpu": "NVIDIA GeForce RTX 4080 SUPER",
+  "launch_us": 17.4,
+  "pcie_roundtrip_us": 25.3,
+  "router_batch1_us": 3523.35,
+  "router_batch4096_ns_per_q": 3669.019,
+  "deref_batched_ns_per_pointer": 0.08
+ },
+ "kept_mb": 21.200477,
+ "store_mb": 4.181508,
+ "train_seconds": 290.70464420318604,
+ "train_device": "NVIDIA GeForce RTX 4080 SUPER",
+ "params": {
+  "router_s0": 344981,
+  "router_s1": 344981,
+  "router_s2": 344981,
+  "router_12hop": 344981,
+  "router_1pct": 344981,
+  "param_1x": 1450626,
+  "param_4x": 5690814
+ },
+ "param_dims": {
+  "param_1x": 32,
+  "param_4x": 124
+ },
+ "n_questions": {
+  "1": 9945,
+  "2": 14872,
+  "3": 14274
+ },
+ "n_fact_probe": 3000,
+ "eval_seconds": 148.01474452018738
+}

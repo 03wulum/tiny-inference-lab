@@ -1,0 +1,8 @@
+{
+ "gpu": "NVIDIA GeForce RTX 4080 SUPER",
+ "launch_us": 17.4,
+ "pcie_roundtrip_us": 25.3,
+ "router_batch1_us": 3523.35,
+ "router_batch4096_ns_per_q": 3669.019,
+ "deref_batched_ns_per_pointer": 0.08
+}
