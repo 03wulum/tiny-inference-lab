@@ -9,6 +9,7 @@ Small, runnable reproductions of recent research on **efficient, on-device AI**:
 | 01 | Compress the KV cache to ~3 bits with no calibration ([TurboQuant](https://arxiv.org/abs/2504.19874), ICLR 2026) | **INCONCLUSIVE** (4/5) ✨ | [README](experiments/01-turboquant-kv-cache) |
 | 02 | Give each token its own KV bit budget ([Don't Waste Bits](https://arxiv.org/abs/2604.04722), 2026) | *in progress* | |
 | 04 | Answer multi-hop questions with a 0.34M-param router that stores only *how to connect* facts, plus a constant-time pointer store | **INCONCLUSIVE** (3/5) ✨ | [README](experiments/04-pointer-memory) |
+| 05 | Make 04 conclusive: loop fix built in, 1-5 hop levels, every rival type (memoriser 1x/4x, KG embeddings) | *pending (GPU run queued)* | [README](experiments/05-pointer-scaling) |
 
 ✨ **04:** +53 to +88 points over a same-size no-memory model, and fact edits need no retraining. Missed 3-hop (82.8 vs 85) and latency (549 vs 500 µs). A non-backtracking walk, found after the run, gives 99-100% on 3-hop.
 
