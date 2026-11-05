@@ -183,5 +183,6 @@
   "3": 14274
  },
  "n_fact_probe": 3000,
- "eval_seconds": 148.01474452018738
+ "eval_seconds": 148.01474452018738,
+ "intriguing": "Post hoc: a non-backtracking walk lifts the same routers to 98.9-100% on 3-hop with no retraining; a router trained on 1% of the questions matches the full-data router."
 }

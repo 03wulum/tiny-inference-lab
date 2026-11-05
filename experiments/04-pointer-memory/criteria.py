@@ -20,6 +20,9 @@ from __future__ import annotations
 # ChatGPT+StructGPT on 3-hop (77.7 / 80.2).
 THRESH = {1: 95.0, 2: 94.0, 3: 85.0}
 
+# ✨ tag added after the pre-registered run (SOP: a tag never changes the verdict)
+INTRIGUING = ("Post hoc: a non-backtracking walk lifts the same routers to 98.9-100% on 3-hop with no retraining; a router trained on 1% of the questions matches the full-data router.")
+
 CRITERIA = [
     dict(id="C1", core=True, name="Beats the same-size no-memory model by >= 20 pts on 2- and 3-hop",
          metric="c1_min_gap_pts", op=">=", threshold=20.0,

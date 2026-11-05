@@ -44,6 +44,30 @@ the result to a bigger model that talks or acts.
 Also measured (no effect on the verdict): an untrained router with the real store, the router with
 an empty store, a router that never saw a 3-hop question, and a router trained on 1% of the data.
 
+## What happened
+
+**Verdict: INCONCLUSIVE (3 of 5).** The big claim held. Two side targets missed, one of them by a hair.
+
+- **Pointers crush memorising.** On 2-hop questions the router scored 97.6-99.9% and the same-size
+  no-memory model scored 10%. Even with 4x the bytes, the no-memory model only remembered about a
+  quarter of the facts it had been shown. Storing "how to connect" is far cheaper than storing "what is".
+- **Edit the dictionary, the answers change.** We rewired 1,642 movies (new directors, years, actors).
+  With no retraining, the pointer model got 99.6% of the changed questions right. The no-memory model
+  got 6%; it kept giving the old answers.
+- **3-hop missed (82.8 vs 85).** The router was choosing the right three pointers. The problem was the
+  walk: for "who directed movies that share actors with [Heat]", it went Heat → its actors → back to
+  Heat → Heat's director, and those loops outvoted the real answers. One rule, "don't walk back through
+  the starting point", lifts the same routers to 98.9-100% with no retraining. We found this *after*
+  the pre-registered run, so it doesn't change the verdict. It's a follow-up, honestly labelled.
+- **Speed missed by 10% (549 µs vs 500).** The run shared Fortran with another job. The router itself is
+  ~270 µs per question in a batch; Python overhead is most of the rest.
+- **1% of the data was enough.** A router trained on ~3,300 questions matched one trained on 330,000.
+  That's the "compact training on first principles" idea in miniature: there are only a few dozen
+  question shapes, and once the router knows them, the dictionary does the rest.
+- **It didn't learn to count past what it saw.** A router trained on 1- and 2-hop questions scored 0%
+  on 3-hop. It learned "how many hops" as a fixed choice, not as a rule it can extend. That's the
+  honest limit of generalisation here.
+
 ## Your question: nanoseconds or microseconds?
 
 Short answer: **one pointer is nanoseconds; one question is microseconds; a GPU only gets to
@@ -60,6 +84,11 @@ nanoseconds per question when you batch thousands of them.**
 | Copy a number to the GPU and back over PCIe | ~10-30 µs | The PCIe bus round trip |
 | A small transformer on the GPU, one question | ~0.3-1 ms | ~50 kernel launches in a row |
 | The same transformer, 4,096 questions per call | ~100s of ns per question | Launch cost shared by 4,096 |
+
+**Measured on Fortran** (GPU shared with another job, so GPU numbers are pessimistic): one GPU kernel
+launch 17 µs, a PCIe round trip 25 µs, the router on the GPU for one question 3.5 ms (vs 0.55 ms on the
+CPU), and **0.08 ns per pointer** when the GPU does 16 million lookups in one go. One pointer from
+Python: 220 ns. The same lookup vectorised on the CPU: 6.8 ns.
 
 So for **one** question at a time, the CPU wins: the router is a few small matrix multiplies and
 the pointers are array reads, all in a few hundred microseconds or less, with no trip to the GPU.

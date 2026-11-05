@@ -74,3 +74,17 @@ evaluated on 3-hop; a router trained on 1% of the questions.
 - Latency is machine-dependent; the C3 number is from the machine that ran `run.py`.
 - The no-memory baseline gets the same GPU time, not unlimited time; its train-set fit is reported
   so capacity limits and under-training can be told apart.
+
+## Post-hoc analysis (after the pre-registered run; does not change the verdict)
+
+All three seeds landed at 82.8-83.8% on 3-hop, so the error looked systematic. Grouping the misses by
+question template showed they are almost all "share actors with" or "starred by X actors" questions.
+For these, the router's pointer sequence is correct, but the walk can pass back through the topic
+entity, and those paths dominate the path-count ranking. MetaQA's answers come from walks that don't
+revisit the topic. `explore_walk.py` re-scores the same weights with `avoid_topic=True` (drop the topic
+after every hop): 3-hop worst seed 98.9% (seeds 98.9 / 100 / 100), 1-hop and 2-hop unchanged, 1%-data router
+99.6%. Results in `results/nonbacktracking.json`. A follow-up experiment should pre-register the
+non-backtracking walk.
+
+GPU latency was measured while another job shared the GPU (launch 17 µs is ~3x a quiet GPU), so treat
+`results/latency_gpu.json` as an upper bound.

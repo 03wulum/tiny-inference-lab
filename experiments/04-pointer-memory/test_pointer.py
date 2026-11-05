@@ -129,3 +129,12 @@ def test_verdict_logic():
     assert evaluate({**good, "c1_min_gap_pts": 5})["verdict"] == "FAIL"
     assert evaluate({**good, "c3_e2e_us": 900})["verdict"] == "INCONCLUSIVE"
     assert evaluate({**good, "n1_random_2hop": 99})["verdict"] == "INCONCLUSIVE"
+
+
+def test_non_backtracking_walk(kb, store):
+    # De Niro -> his movies -> their actors -> those actors' movies: plain walk revisits De Niro
+    path = [R["starred_actors"] + INV, R["starred_actors"], R["starred_actors"] + INV]
+    plain, _ = store.follow(kb.id["Robert De Niro"], path)
+    nb, _ = store.follow(kb.id["Robert De Niro"], path, avoid_topic=True)
+    assert "Casino" in names(kb, plain)          # reached only by walking back through De Niro
+    assert names(kb, nb) == ["Heat"]             # via Al Pacino only

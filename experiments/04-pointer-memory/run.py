@@ -21,7 +21,7 @@ from pathlib import Path
 import numpy as np
 
 import data as D
-from criteria import THRESH, evaluate
+from criteria import INTRIGUING, THRESH, evaluate
 from router_np import NpParamQA, NpRouter, load
 from store import PointerStore, fact_queries
 
@@ -245,7 +245,7 @@ def main():
         n1_random_2hop=ctrl["random_pointers"][2],
     )
     v = evaluate(metrics)
-    v.update(quick=a.quick, accuracy=acc, param_fact_recall=fact_recall, worst_seed=worst, controls=ctrl, exploratory=explore, edit=edit,
+    v.update(intriguing=INTRIGUING, quick=a.quick, accuracy=acc, param_fact_recall=fact_recall, worst_seed=worst, controls=ctrl, exploratory=explore, edit=edit,
              latency=lat, latency_gpu=gpu_lat, kept_mb=kept_mb, store_mb=store.nbytes / 1e6,
              train_seconds=log["total_train_seconds"], train_device=log["device"],
              params={k: r["params"] for k, r in log["runs"].items()}, param_dims=log["param_dims"],

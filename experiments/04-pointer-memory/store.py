@@ -83,15 +83,20 @@ class PointerStore:
         uniq, inv = np.unique(nb, return_inverse=True)
         return uniq.astype(np.int32), np.bincount(inv, weights=w).astype(np.float32)
 
-    def follow(self, topic: int, path) -> tuple[np.ndarray, np.ndarray]:
+    def follow(self, topic: int, path, avoid_topic=False) -> tuple[np.ndarray, np.ndarray]:
+        """avoid_topic=True is a non-backtracking walk: paths may not pass back through the topic
+        (added after the pre-registered run; see results/nonbacktracking.json)."""
         ents, w = np.array([topic], np.int32), np.ones(1, np.float32)
         for d in path:
             ents, w = self.hop(ents, w, int(d))
+            if avoid_topic:
+                keep = ents != topic
+                ents, w = ents[keep], w[keep]
         return ents, w
 
-    def answer(self, topic: int, path) -> int:
+    def answer(self, topic: int, path, avoid_topic=False) -> int:
         """Top-1 answer: the most-reached entity other than the topic (ties -> lowest id)."""
-        ents, w = self.follow(topic, path)
+        ents, w = self.follow(topic, path, avoid_topic)
         keep = ents != topic
         ents, w = ents[keep], w[keep]
         if len(ents) == 0:
